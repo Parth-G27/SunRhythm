@@ -2,9 +2,11 @@ import { formatTime } from './solarService'
 
 // Principle I: the ONLY network target in the whole app.
 const OLLAMA_URL = 'http://localhost:11434/api/generate'
-const MODEL = 'gemma3:4b'
+const TAGS_URL = 'http://localhost:11434/api/tags'
+const PREFERRED_MODELS = ['gemma3:4b', 'gemma3:1b', 'phi3']
 const TIMEOUT_MS = 20000
-const HHMM = /^([01]?\d|2[0-3]):([0-5]\d)$/
+// Accepts "07:30" and, since small models like ranges, "07:30-08:00" (start time is used).
+const HHMM = /^([01]?\d|2[0-3]):([0-5]\d)(?:\s*[-–]\s*\S+)?$/
 
 const IDS = ['morning', 'midday', 'evening']
 const DURATIONS = [10, 5, 10]
@@ -28,8 +30,10 @@ Use 24-hour times between wake and sleep. Keep each instruction to one sentence.
 // Returns three Breaks, or throws if the reply is unusable.
 export function parsePlan(responseText, profile, date = new Date()) {
   const data = JSON.parse(responseText)
-  const items = Array.isArray(data) ? data : data?.breaks
-  if (!Array.isArray(items) || items.length !== 3) throw new Error('expected 3 breaks')
+  const raw = Array.isArray(data) ? data : data?.breaks
+  // Small models sometimes nest arrays; flatten them.
+  const items = Array.isArray(raw) ? raw.flat(Infinity) : null
+  if (!items || items.length !== 3) throw new Error('expected 3 breaks')
 
   const wake = toMinutes(profile.wakeTime)
   const sleep = toMinutes(profile.sleepTime)
@@ -57,26 +61,51 @@ export function parsePlan(responseText, profile, date = new Date()) {
   })
 }
 
+// Picks an installed model: a preferred one if present, else the first non-embedding model.
+export function chooseModel(installed) {
+  const names = installed.filter((n) => typeof n === 'string' && !/embed/i.test(n))
+  return PREFERRED_MODELS.find((m) => names.includes(m)) ?? names[0] ?? null
+}
+
+async function pickModel(signal) {
+  const res = await fetch(TAGS_URL, { signal })
+  if (!res.ok) throw new Error(`ollama ${res.status}`)
+  const data = await res.json()
+  const model = chooseModel((data.models ?? []).map((m) => m.name))
+  if (!model) throw new Error('no models installed')
+  return model
+}
+
 // Throws on any failure; callers keep the static schedule (Principle III).
 export async function generateSchedule(solar, profile, { signal, date = new Date() } = {}) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   signal?.addEventListener('abort', () => controller.abort())
   try {
-    const res = await fetch(OLLAMA_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        prompt: buildPrompt(solar, profile),
-        stream: false,
-        format: 'json',
-      }),
-      signal: controller.signal,
-    })
-    if (!res.ok) throw new Error(`ollama ${res.status}`)
-    const data = await res.json()
-    return parsePlan(data.response, profile, date)
+    const model = await pickModel(controller.signal)
+    // Small local models are flaky; one retry (within the same time limit) helps a lot.
+    let lastError
+    for (let attempt = 0; attempt < 2 && !controller.signal.aborted; attempt++) {
+      try {
+        const res = await fetch(OLLAMA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model,
+            prompt: buildPrompt(solar, profile),
+            stream: false,
+            format: 'json',
+          }),
+          signal: controller.signal,
+        })
+        if (!res.ok) throw new Error(`ollama ${res.status}`)
+        const data = await res.json()
+        return parsePlan(data.response, profile, date)
+      } catch (err) {
+        lastError = err
+      }
+    }
+    throw lastError ?? new Error('aborted')
   } finally {
     clearTimeout(timer)
   }
