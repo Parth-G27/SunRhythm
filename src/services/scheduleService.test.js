@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { buildFallbackSchedule, formatCountdown, getNextBreak } from './scheduleService'
+import { buildFallbackSchedule, formatClock, formatCountdown, getFocusBreak } from './scheduleService'
 import { DEFAULT_PROFILE, loadProfile } from './profileService'
 import { getSolarTimes } from './solarService'
 
@@ -47,20 +47,36 @@ describe('loadProfile', () => {
   })
   it('uses a valid saved profile', () => {
     localStorage.setItem('sunrhythm:profile', JSON.stringify({ wakeTime: '06:00', sleepTime: '22:00' }))
-    expect(loadProfile()).toEqual({ wakeTime: '06:00', sleepTime: '22:00' })
+    expect(loadProfile()).toEqual({ wakeTime: '06:00', sleepTime: '22:00', remindersOn: true })
   })
 })
 
-describe('getNextBreak / formatCountdown', () => {
+describe('getFocusBreak / countdown helpers', () => {
   const s = buildFallbackSchedule(solar, DEFAULT_PROFILE, day)
-  it('returns the first break still ahead, or null when all are past', () => {
-    expect(getNextBreak(s, new Date(+new Date(s[0].start) - 1000)).id).toBe('morning')
-    expect(getNextBreak(s, new Date(+new Date(s[0].start) + 1000)).id).toBe('midday')
-    expect(getNextBreak(s, new Date(+new Date(s[2].start) + 1000))).toBeNull()
+  const start = (i) => +new Date(s[i].start)
+  it('returns the next break before it starts', () => {
+    const f = getFocusBreak(s, new Date(start(0) - 1000))
+    expect(f.item.id).toBe('morning')
+    expect(f.active).toBe(false)
   })
-  it('formats countdowns', () => {
+  it('keeps a break active for 30 minutes after its start', () => {
+    const f = getFocusBreak(s, new Date(start(0) + 29 * 60000))
+    expect(f.item.id).toBe('morning')
+    expect(f.active).toBe(true)
+  })
+  it('moves on after the open window and returns null when all are over', () => {
+    expect(getFocusBreak(s, new Date(start(0) + 31 * 60000)).item.id).toBe('midday')
+    expect(getFocusBreak(s, new Date(start(2) + 31 * 60000))).toBeNull()
+  })
+  it('skips completed breaks', () => {
+    expect(getFocusBreak(s, new Date(start(0) + 60000), ['morning']).item.id).toBe('midday')
+  })
+  it('formats countdowns and clocks', () => {
     expect(formatCountdown(30000)).toBe('now')
     expect(formatCountdown(5 * 60000)).toBe('5m')
     expect(formatCountdown(125 * 60000)).toBe('2h 5m')
+    expect(formatClock(10 * 60000)).toBe('10:00')
+    expect(formatClock(61000)).toBe('01:01')
+    expect(formatClock(-5)).toBe('00:00')
   })
 })

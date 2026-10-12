@@ -22,7 +22,10 @@ export default function LocationBanner({ location, status, onRetry }) {
   return (
     <div className="flex items-center gap-2 text-sm text-slate-600">
       <MapPin size={16} />
-      <span>{coords}</span>
+      <span>
+        {location.label ? `${location.label} · ` : ''}
+        {coords}
+      </span>
     </div>
   )
 }
