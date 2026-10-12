@@ -113,6 +113,27 @@ The project was built spec-first with [GitHub Spec Kit](https://github.com/githu
 - Sun times for a manual location in another time zone are shown in your device's time zone.
 - Weather is not used, since it would need an external service.
 
-## Built for
+## Contributing
 
-[Hacktoberfest Open-Source AI Challenge, Week 1: Touch Grass](https://dev.to/challenges/hacktoberfest-week1-2026-10-05).
+SunRhythm is open source and contributions are welcome, whether that's a bug fix, a better prompt for small local models, a new break type or a doc improvement.
+
+1. Fork the repo and create a branch: `git checkout -b feature/my-change`
+2. Run `npm install`, then `npm test` and `npm run build` to check everything passes before you start.
+3. Make your change. Keep it small and simple, and add or update a test if you touch logic in `src/services/`.
+4. Open a pull request that says what changed and why.
+
+Before you start, read the ground rules in [`.specify/memory/constitution.md`](.specify/memory/constitution.md). PRs should respect them:
+
+- **Local-first.** The only allowed network call is to `localhost` Ollama. No analytics, cloud APIs or telemetry.
+- **`localStorage` only.** No backend or database.
+- **Always works without AI.** The static schedule must keep working if Ollama is missing, slow or wrong.
+- **No manual data entry** for core features.
+- **Keep it simple.** Don't add a dependency or abstraction without a concrete need.
+
+Good first issues: a larger preset of break types, a streak or weekly view, better prompts for small models, and accessibility improvements.
+
+Found a bug or have an idea? [Open an issue](https://github.com/Parth-G27/SunRhythm/issues).
+
+## License
+
+Released under the [MIT License](LICENSE). You are free to use, modify and distribute this project, including commercially, as long as the copyright notice is kept.
