@@ -6,12 +6,12 @@ import {
   saveLocation,
 } from '../services/locationService'
 
-// status: 'loading' | 'detected' | 'default'
+// status: 'loading' | 'detected' | 'manual' | 'default'
 export function useLocation() {
   const [state, setState] = useState(() => {
     const saved = loadSavedLocation()
     return saved
-      ? { location: saved, status: 'detected' }
+      ? { location: saved, status: saved.source === 'manual' ? 'manual' : 'detected' }
       : { location: DEFAULT_LOCATION, status: 'loading' }
   })
 
@@ -32,5 +32,10 @@ export function useLocation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return { ...state, retry: detect }
+  const setManual = useCallback((loc) => {
+    saveLocation(loc)
+    setState({ location: loc, status: 'manual' })
+  }, [])
+
+  return { ...state, retry: detect, setManual }
 }

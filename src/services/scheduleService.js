@@ -46,9 +46,17 @@ export function buildFallbackSchedule(solar, profile, date = new Date()) {
   return [make('morning', morning, 10), make('midday', midday, 5), make('evening', evening, 10)]
 }
 
-// First break that has not started yet, or null when all are past.
-export function getNextBreak(windows, now = new Date()) {
-  return windows.find((w) => new Date(w.start).getTime() > now.getTime()) ?? null
+// A break is "open" from its start until this many minutes later.
+export const OPEN_WINDOW_MIN = 30
+
+// The break open right now, else the next upcoming one, else null. Skips finished breaks.
+export function getFocusBreak(windows, now = new Date(), skipIds = []) {
+  const t = now.getTime()
+  const item = windows.find(
+    (w) => !skipIds.includes(w.id) && t < new Date(w.start).getTime() + OPEN_WINDOW_MIN * MIN,
+  )
+  if (!item) return null
+  return { item, active: new Date(item.start).getTime() <= t }
 }
 
 export function formatCountdown(ms) {
@@ -57,4 +65,12 @@ export function formatCountdown(ms) {
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60
   return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+// mm:ss for the big clock.
+export function formatClock(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const m = String(Math.floor(total / 60)).padStart(2, '0')
+  const s = String(total % 60).padStart(2, '0')
+  return `${m}:${s}`
 }

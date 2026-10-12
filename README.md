@@ -3,6 +3,12 @@
 Local-first circadian helper: schedules short daylight breaks from today's sun times.
 Everything runs in your browser; the only network call is to a local Ollama instance.
 
+## Features
+
+Location detection, local sun times, a three-break daylight schedule (optionally written by a local
+Ollama model), a dashboard, a full-screen Step Outside timer, in-app reminders (chime, vibration,
+banner), a daily log, and Settings (wake/sleep times, manual location).
+
 ## Run
 
 ```bash

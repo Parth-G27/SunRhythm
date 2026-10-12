@@ -17,6 +17,15 @@ export function isValidLocation(loc) {
   )
 }
 
+// Manual entry (strings from inputs) -> Location, or null when invalid/empty.
+export function parseCoords(lat, lon, label = '') {
+  if (String(lat).trim() === '' || String(lon).trim() === '') return null
+  const loc = { lat: Number(lat), lon: Number(lon), source: 'manual' }
+  if (!isValidLocation(loc)) return null
+  const name = String(label).trim().slice(0, 40)
+  return name ? { ...loc, label: name } : loc
+}
+
 export function loadSavedLocation() {
   const saved = getItem(KEY)
   return isValidLocation(saved) ? saved : null
