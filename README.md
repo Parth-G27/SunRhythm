@@ -19,10 +19,15 @@ npm test
 
 ## Optional: local AI plan
 
+Start Ollama with any small chat model installed (the app uses `gemma3:4b`, `gemma3:1b` or `phi3`
+if present, otherwise the first installed model):
+
 ```bash
-ollama pull gemma3:4b
-OLLAMA_ORIGINS="http://localhost:5173" ollama serve
+ollama pull gemma3:1b
+ollama serve
 ```
+
+If the browser is blocked by CORS, start Ollama with `OLLAMA_ORIGINS="http://localhost:5173"`.
 
 Without Ollama the app shows a static schedule. Location, profile and the day's plan are kept
 in `localStorage` only; nothing is sent anywhere except `http://localhost:11434`.
